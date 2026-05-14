@@ -111,3 +111,22 @@ Essa proposta tem como principal finalidade motivar os estudantes a se dedicarem
                  ┌───────────────────────────────┐
                  │       Fim do benefício        │
                  └───────────────────────────────┘
+
+
+
+                 Regras:
+
+                 1. Desempenho Acadêmico (Média Mínima)
+Nota de Corte: O bolsista deve manter um desempenho igual ou superior a 6,0 (seis) em todas as disciplinas.
+
+Penalidade: Caso o aluno fique abaixo de 6,0 em qualquer matéria, ele será automaticamente retirado do programa e perderá o direito ao recebimento da bolsa.
+
+2. Assiduidade e Frequência Escolar
+Limite de Faltas: O aluno não pode ultrapassar o número de faltas permitido pela instituição (ou o limite estabelecido especificamente para o projeto).
+
+Justificativas: As faltas só serão desconsideradas para fins de manutenção da bolsa mediante a apresentação de justificativa formal (atestado médico ou documentos legais comprobatórios).
+
+Penalidade: Faltas injustificadas que excedam o limite estipulado causarão a perda do benefício.
+
+3. Critérios de Reintegração
+Uma vez perdida a bolsa por desempenho ou falta, o aluno não poderá reavê-la no mesmo período letivo, reforçando o caráter de compromisso e disciplina do projeto.
