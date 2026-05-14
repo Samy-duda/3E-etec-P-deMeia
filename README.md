@@ -114,6 +114,10 @@ Essa proposta tem como principal finalidade motivar os estudantes a se dedicarem
 
 
 
+                
+                 
+                 
+                 
                  Regras:
 
                  1. Desempenho Acadêmico (Média Mínima)
