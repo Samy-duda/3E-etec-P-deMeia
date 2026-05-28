@@ -68,7 +68,7 @@ Essa proposta tem como principal finalidade motivar os estudantes a se dedicarem
                                │   ┌───────────▼──────────────┐
                                │   │ Iniciar AVALIAÇÃO        │
                                │   │ periódica                │
-                               │   └───────────┬──────────────┘
+                               │   └───────────┬──────────────.┘
                                │               │
                                │   ┌───────────▼──────────────┐
                                │   │ Coletar dados:           │
