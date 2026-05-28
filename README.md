@@ -1,4 +1,4 @@
-# P-demeia
+# Projeto_notamaxima
 Integrantes do grupo:
 Sâmylla  Eduarda da Silva Magalhães
 Emanuelly Vitoria Pereira da Costa
