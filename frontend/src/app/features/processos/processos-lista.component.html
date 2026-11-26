@@ -1,0 +1,61 @@
+<h1>Processos seletivos</h1>
+
+@if (podeOperar()) {
+  <div class="acoes">
+    <a class="botao" routerLink="/processos-seletivos/novo">Novo processo seletivo</a>
+  </div>
+
+  <section class="cartao">
+    <form [formGroup]="filtroForm" class="grade-campos">
+      <div class="campo">
+        <label for="filtro-periodo-processo">Período letivo</label>
+        <select id="filtro-periodo-processo" formControlName="periodoLetivoId">
+          <option value="">Todos os períodos</option>
+          @for (periodo of periodosDisponiveis(); track periodo.id) {
+            <option [value]="periodo.id">{{ periodo.nome }}</option>
+          }
+        </select>
+      </div>
+    </form>
+  </section>
+}
+
+<app-mensagem-erro [erro]="erro()" />
+
+@if (carregando()) {
+  <p class="carregando" role="status">Carregando processos...</p>
+}
+
+@if (resultado(); as pagina) {
+  <section class="cartao">
+    @if (pagina.totalElementos === 0 && !carregando()) {
+      <p class="vazio">Nenhum processo seletivo encontrado.</p>
+    } @else {
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Processo</th>
+            <th>Período</th>
+            <th>Prova</th>
+            <th>Situação</th>
+            <th>Classificação e bolsas</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (processo of pagina.conteudo; track processo.id) {
+            <tr>
+              <td data-rotulo="Processo">Nº {{ processo.id }}</td>
+              <td data-rotulo="Período">{{ rotuloPeriodo(processo.periodoLetivoId) }}</td>
+              <td data-rotulo="Prova">Prova nº {{ processo.provaId }}</td>
+              <td data-rotulo="Situação"><span class="marcador">{{ processo.status }}</span></td>
+              <td data-rotulo="Classificação e bolsas">
+                <a [routerLink]="['/processos-seletivos', processo.id]">Abrir</a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-paginacao [pagina]="pagina.pagina" [totalPaginas]="pagina.totalPaginas" (mudarPagina)="mudarPagina($event)" />
+    }
+  </section>
+}

@@ -1,0 +1,177 @@
+@startuml DER_Pe_de_Meia
+' DER (lógico/físico) - Projeto Pé-de-Meia, MySQL 8.0+
+' Fonte: script SQL do arquivo banco_de_dados (seção 3)
+' Legenda: * = NOT NULL | <<PK>> chave primária | <<FK>> chave estrangeira | <<UK>> único
+hide circle
+skinparam linetype ortho
+
+entity "usuarios" as usuarios {
+  * id : BIGINT <<PK>>
+  --
+  * nome : VARCHAR(150)
+  * email : VARCHAR(190) <<UK>>
+  * senha_hash : VARCHAR(255)
+  * perfil : ENUM
+  * ativo : BOOLEAN
+  * criado_em : TIMESTAMP
+}
+
+entity "alunos" as alunos {
+  * id : BIGINT <<PK>>
+  --
+  * nome : VARCHAR(150)
+  * matricula_escolar : VARCHAR(50) <<UK>>
+  data_nascimento : DATE
+  email : VARCHAR(190)
+  telefone : VARCHAR(30)
+  * ativo : BOOLEAN
+  * criado_em : TIMESTAMP
+}
+
+entity "periodos_letivos" as periodos_letivos {
+  * id : BIGINT <<PK>>
+  --
+  * nome : VARCHAR(100)
+  * data_inicio : DATE
+  * data_fim : DATE
+  * ativo : BOOLEAN
+}
+
+entity "matriculas" as matriculas {
+  * id : BIGINT <<PK>>
+  --
+  * aluno_id : BIGINT <<FK>>
+  * periodo_letivo_id : BIGINT <<FK>>
+  * ano_escolar : TINYINT
+  turma : VARCHAR(30)
+  * status : ENUM
+}
+
+entity "provas" as provas {
+  * id : BIGINT <<PK>>
+  --
+  * periodo_letivo_id : BIGINT <<FK>>
+  * titulo : VARCHAR(150)
+  descricao : TEXT
+  data_aplicacao : DATE
+  * nota_maxima : DECIMAL(5,2)
+  criada_por : BIGINT <<FK>>
+  * criada_em : TIMESTAMP
+}
+
+entity "notas_provas" as notas_provas {
+  * id : BIGINT <<PK>>
+  --
+  * prova_id : BIGINT <<FK>>
+  * matricula_id : BIGINT <<FK>>
+  * nota : DECIMAL(5,2)
+  lancada_por : BIGINT <<FK>>
+  * lancada_em : TIMESTAMP
+}
+
+entity "disciplinas" as disciplinas {
+  * id : BIGINT <<PK>>
+  --
+  * nome : VARCHAR(100) <<UK>>
+  * ativa : BOOLEAN
+}
+
+entity "medias_disciplinas" as medias_disciplinas {
+  * id : BIGINT <<PK>>
+  --
+  * matricula_id : BIGINT <<FK>>
+  * disciplina_id : BIGINT <<FK>>
+  * periodo_letivo_id : BIGINT <<FK>>
+  * media : DECIMAL(4,2)
+  atualizada_por : BIGINT <<FK>>
+  * atualizada_em : TIMESTAMP
+}
+
+entity "frequencias" as frequencias {
+  * id : BIGINT <<PK>>
+  --
+  * matricula_id : BIGINT <<FK>>
+  disciplina_id : BIGINT <<FK>>
+  * data_aula : DATE
+  * situacao : ENUM
+  justificativa : TEXT
+  * justificativa_aceita : BOOLEAN
+  analisada_por : BIGINT <<FK>>
+  analisada_em : DATETIME
+  registrada_por : BIGINT <<FK>>
+  * registrada_em : TIMESTAMP
+}
+
+entity "processos_seletivos" as processos_seletivos {
+  * id : BIGINT <<PK>>
+  --
+  * periodo_letivo_id : BIGINT <<FK>>
+  * prova_id : BIGINT <<FK>>
+  * status : ENUM
+  iniciado_em : DATETIME
+  encerrado_em : DATETIME
+  criado_por : BIGINT <<FK>>
+}
+
+entity "classificacoes" as classificacoes {
+  * id : BIGINT <<PK>>
+  --
+  * processo_seletivo_id : BIGINT <<FK>>
+  * matricula_id : BIGINT <<FK>>
+  * nota_final : DECIMAL(5,2)
+  * posicao : SMALLINT
+  * selecionado : BOOLEAN
+  * calculada_em : TIMESTAMP
+}
+
+entity "bolsas" as bolsas {
+  * id : BIGINT <<PK>>
+  --
+  * matricula_id : BIGINT <<FK>>
+  * processo_seletivo_id : BIGINT <<FK>>
+  * valor_mensal : DECIMAL(8,2)
+  * data_inicio : DATE
+  data_fim : DATE
+  * situacao : ENUM
+  motivo_cancelamento : TEXT
+  cancelada_por : BIGINT <<FK>>
+  cancelada_em : DATETIME
+  * criada_em : TIMESTAMP
+}
+
+entity "historico_bolsas" as historico_bolsas {
+  * id : BIGINT <<PK>>
+  --
+  * bolsa_id : BIGINT <<FK>>
+  situacao_anterior : ENUM
+  * situacao_nova : ENUM
+  motivo : TEXT
+  alterada_por : BIGINT <<FK>>
+  * alterada_em : TIMESTAMP
+}
+
+periodos_letivos ||--o{ matriculas : agrupa
+alunos ||--o{ matriculas : é matriculado em
+periodos_letivos ||--o{ provas : tem
+usuarios |o--o{ provas : cria
+provas ||--o{ notas_provas : gera
+matriculas ||--o{ notas_provas : recebe
+usuarios |o--o{ notas_provas : lança
+matriculas ||--o{ medias_disciplinas : possui
+disciplinas ||--o{ medias_disciplinas : é usada em
+periodos_letivos ||--o{ medias_disciplinas : referente a
+usuarios |o--o{ medias_disciplinas : atualiza
+matriculas ||--o{ frequencias : registra
+disciplinas |o--o{ frequencias : se refere a
+usuarios |o--o{ frequencias : analisa
+periodos_letivos ||--o{ processos_seletivos : organiza
+provas ||--o{ processos_seletivos : é utilizada em
+usuarios |o--o{ processos_seletivos : cria
+processos_seletivos ||--o{ classificacoes : gera
+matriculas ||--o{ classificacoes : é classificada em
+matriculas ||--o{ bolsas : recebe
+processos_seletivos ||--o{ bolsas : concede
+usuarios |o--o{ bolsas : cancela
+bolsas ||--o{ historico_bolsas : tem
+usuarios |o--o{ historico_bolsas : altera
+@enduml

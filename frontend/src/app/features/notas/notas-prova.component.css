@@ -1,0 +1,10 @@
+:host {
+  display: block;
+}
+
+input[type='number'] {
+  width: 6rem;
+  padding: 0.35rem;
+  border: 1px solid #9ca3af;
+  border-radius: 6px;
+}

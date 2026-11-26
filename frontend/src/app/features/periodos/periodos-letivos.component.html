@@ -1,0 +1,79 @@
+<h1>Períodos letivos</h1>
+
+<app-mensagem-erro [erro]="erro()" />
+
+@if (carregando()) {
+  <p class="carregando" role="status">Carregando períodos...</p>
+}
+
+<section class="cartao">
+  <h2>Períodos cadastrados</h2>
+  @if (!carregando() && lista().length === 0 && !erro()) {
+    <p class="vazio">Nenhum período cadastrado.</p>
+  }
+  @if (lista().length > 0) {
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Início</th>
+          <th>Fim</th>
+          <th>Matrículas</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (periodo of lista(); track periodo.id) {
+          <tr>
+            <td data-rotulo="Nome">{{ periodo.nome }}</td>
+            <td data-rotulo="Início">{{ formatarData(periodo.dataInicio) }}</td>
+            <td data-rotulo="Fim">{{ formatarData(periodo.dataFim) }}</td>
+            <td data-rotulo="Matrículas">
+              <a [routerLink]="['/periodos-letivos', periodo.id, 'matriculas']">Ver matrículas</a>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</section>
+
+<section class="cartao">
+  <h2>Novo período letivo</h2>
+
+  @if (sucesso(); as texto) {
+    <div class="alerta alerta-sucesso" role="status"><p>{{ texto }}</p></div>
+  }
+
+  <app-mensagem-erro [erro]="erroCadastro()" />
+
+  <form [formGroup]="form" (ngSubmit)="salvar()" novalidate>
+    <div class="grade-campos">
+      <div class="campo">
+        <label for="periodo-nome">Nome (ex.: 2026-1)</label>
+        <input id="periodo-nome" type="text" formControlName="nome" maxlength="60" />
+        @if (form.controls.nome.touched && form.controls.nome.hasError('required')) {
+          <span class="erro-campo">Informe o nome.</span>
+        }
+      </div>
+      <div class="campo">
+        <label for="periodo-inicio">Data de início</label>
+        <input id="periodo-inicio" type="date" formControlName="dataInicio" />
+        @if (form.controls.dataInicio.touched && form.controls.dataInicio.hasError('required')) {
+          <span class="erro-campo">Informe a data de início.</span>
+        }
+      </div>
+      <div class="campo">
+        <label for="periodo-fim">Data de fim</label>
+        <input id="periodo-fim" type="date" formControlName="dataFim" />
+        @if (form.controls.dataFim.touched && form.controls.dataFim.hasError('required')) {
+          <span class="erro-campo">Informe a data de fim.</span>
+        }
+      </div>
+    </div>
+    <div class="acoes">
+      <button type="submit" class="botao" [disabled]="enviando()">
+        {{ enviando() ? 'Salvando...' : 'Cadastrar período' }}
+      </button>
+    </div>
+  </form>
+</section>

@@ -1,0 +1,12 @@
+@if (erro(); as e) {
+  <div class="alerta alerta-erro" role="alert">
+    <p>{{ e.mensagem }}</p>
+    @if (e.campos.length > 0) {
+      <ul>
+        @for (campo of e.campos; track campo.campo) {
+          <li><strong>{{ campo.campo }}</strong>: {{ campo.mensagem }}</li>
+        }
+      </ul>
+    }
+  </div>
+}

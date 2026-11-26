@@ -1,0 +1,149 @@
+<h1>Processo seletivo nº {{ processoId }}</h1>
+
+<div class="acoes">
+  <a class="botao secundario" routerLink="/processos-seletivos">Voltar para processos</a>
+</div>
+
+<app-mensagem-erro [erro]="erroProcesso()" />
+@if (carregandoProcesso()) {
+  <p class="carregando" role="status">Carregando processo...</p>
+}
+@if (processo(); as p) {
+  <section class="cartao">
+    <p>Período nº <strong>{{ p.periodoLetivoId }}</strong> · Prova nº <strong>{{ p.provaId }}</strong> · Situação <span class="marcador">{{ p.status }}</span></p>
+  </section>
+}
+
+<section class="cartao" aria-labelledby="titulo-classificacao">
+  <h2 id="titulo-classificacao">Classificação</h2>
+
+  <app-mensagem-erro [erro]="erroGerar()" />
+  @if (carregandoClassificacao()) {
+    <p class="carregando" role="status">Carregando classificação...</p>
+  }
+  <app-mensagem-erro [erro]="erroClassificacao()" />
+
+  @if (classificacao(); as c) {
+    @if (!classificacaoGerada()) {
+      <p class="vazio">A classificação ainda não foi gerada.</p>
+      @if (podeOperar()) {
+        <div class="acoes">
+          <button type="button" class="botao" [disabled]="gerandoClassificacao()" (click)="gerarClassificacao()">
+            {{ gerandoClassificacao() ? 'Gerando...' : 'Gerar classificação' }}
+          </button>
+        </div>
+      }
+    } @else {
+      <p class="dica">Gerada em {{ formatarInstante(c.calculadaEm) }}. Vagas por ano escolar: {{ c.vagasPorAno }}.</p>
+
+      <div class="acoes" role="group" aria-label="Filtrar por ano escolar">
+        <button type="button" class="botao" [class.secundario]="filtroAno() !== null" (click)="filtrarAno(null)">Todos os anos</button>
+        @for (ano of anosEscolares; track ano) {
+          <button type="button" class="botao" [class.secundario]="filtroAno() !== ano" (click)="filtrarAno(ano)">{{ ano }}º ano</button>
+        }
+      </div>
+
+      @if (c.itens.length === 0) {
+        <p class="vazio">Nenhum aluno classificado.</p>
+      } @else {
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Ano</th>
+              <th>Posição</th>
+              <th>Aluno</th>
+              @if (mostrarMatricula()) {
+                <th>Matrícula escolar</th>
+              }
+              <th>Nota final</th>
+              <th>Situação</th>
+              @if (podeOperar()) {
+                <th></th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of c.itens; track item.matriculaId) {
+              <tr>
+                <td data-rotulo="Ano">{{ item.anoEscolar }}º</td>
+                <td data-rotulo="Posição">{{ item.posicao }}</td>
+                <td data-rotulo="Aluno">{{ item.nomeAluno }}</td>
+                @if (mostrarMatricula()) {
+                  <td data-rotulo="Matrícula escolar">{{ item.matriculaEscolar }}</td>
+                }
+                <td data-rotulo="Nota final">{{ formatarNota(item.notaFinal) }}</td>
+                <td data-rotulo="Situação">
+                  <span class="marcador" [class.destaque]="item.selecionado">{{ rotuloSelecao(item.selecionado) }}</span>
+                </td>
+                @if (podeOperar()) {
+                  <td data-rotulo="Bolsa">
+                    @if (podeConcederIndividual(item)) {
+                      <button type="button" class="botao secundario" [disabled]="concedendo()" (click)="concederIndividual(item)">Conceder bolsa</button>
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    }
+  }
+</section>
+
+<section class="cartao" aria-labelledby="titulo-bolsas">
+  <h2 id="titulo-bolsas">Bolsas</h2>
+
+  @if (podeOperar() && classificacaoGerada()) {
+    <div class="acoes">
+      <button type="button" class="botao" [disabled]="concedendo()" (click)="concederLote()">
+        {{ concedendo() ? 'Concedendo...' : 'Conceder bolsas aos selecionados' }}
+      </button>
+    </div>
+  }
+  @if (sucessoConceder(); as texto) {
+    <div class="alerta alerta-sucesso" role="status"><p>{{ texto }}</p></div>
+  }
+  <app-mensagem-erro [erro]="erroConceder()" />
+
+  <app-mensagem-erro [erro]="erroBolsas()" />
+  @if (carregandoBolsas()) {
+    <p class="carregando" role="status">Carregando bolsas...</p>
+  }
+
+  @if (!carregandoBolsas() && listaBolsas().length === 0 && !erroBolsas()) {
+    <p class="vazio">Nenhuma bolsa concedida neste processo.</p>
+  }
+  @if (listaBolsas().length > 0) {
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th>Ano</th>
+          <th>Posição</th>
+          <th>Aluno</th>
+          @if (mostrarMatriculaBolsa()) {
+            <th>Matrícula escolar</th>
+          }
+          <th>Valor mensal</th>
+          <th>Situação</th>
+          <th>Início</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (bolsa of listaBolsas(); track bolsa.id) {
+          <tr>
+            <td data-rotulo="Ano">{{ bolsa.anoEscolar }}º</td>
+            <td data-rotulo="Posição">{{ bolsa.posicao }}</td>
+            <td data-rotulo="Aluno">{{ bolsa.nomeAluno }}</td>
+            @if (mostrarMatriculaBolsa()) {
+              <td data-rotulo="Matrícula escolar">{{ bolsa.matriculaEscolar }}</td>
+            }
+            <td data-rotulo="Valor mensal">{{ formatarMoeda(bolsa.valorMensal) }}</td>
+            <td data-rotulo="Situação"><span class="marcador destaque">{{ bolsa.situacao }}</span></td>
+            <td data-rotulo="Início">{{ formatarData(bolsa.dataInicio) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</section>

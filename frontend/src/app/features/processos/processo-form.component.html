@@ -1,0 +1,52 @@
+<h1>Novo processo seletivo</h1>
+
+<div class="cartao">
+  <p class="dica">Liga um período letivo e uma prova. A classificação só pode ser gerada depois.</p>
+
+  <app-mensagem-erro [erro]="erroCarregamento()" />
+  @if (carregandoPeriodos()) {
+    <p class="carregando" role="status">Carregando períodos...</p>
+  }
+
+  <app-mensagem-erro [erro]="erro()" />
+
+  <form [formGroup]="form" (ngSubmit)="salvar()" novalidate>
+    <div class="grade-campos">
+      <div class="campo">
+        <label for="processo-periodo">Período letivo *</label>
+        <select id="processo-periodo" formControlName="periodoLetivoId">
+          <option value="">Escolha o período</option>
+          @for (periodo of periodosDisponiveis(); track periodo.id) {
+            <option [value]="periodo.id">{{ periodo.nome }}</option>
+          }
+        </select>
+        @if (form.controls.periodoLetivoId.touched && form.controls.periodoLetivoId.hasError('required')) {
+          <span class="erro-campo">Escolha o período.</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="processo-prova">Prova *</label>
+        <select id="processo-prova" formControlName="provaId" [attr.disabled]="provasDoPeriodo().length === 0 ? true : null">
+          <option value="">{{ carregandoProvas() ? 'Carregando provas...' : 'Escolha a prova' }}</option>
+          @for (prova of provasDoPeriodo(); track prova.id) {
+            <option [value]="prova.id">{{ prova.titulo }}</option>
+          }
+        </select>
+        @if (!carregandoProvas() && form.controls.periodoLetivoId.value !== '' && provasDoPeriodo().length === 0) {
+          <span class="dica">Este período não tem provas. Cadastre uma prova antes.</span>
+        }
+        @if (form.controls.provaId.touched && form.controls.provaId.hasError('required')) {
+          <span class="erro-campo">Escolha a prova.</span>
+        }
+      </div>
+    </div>
+
+    <div class="acoes">
+      <button type="submit" class="botao" [disabled]="enviando()">
+        {{ enviando() ? 'Criando...' : 'Criar processo seletivo' }}
+      </button>
+      <a class="botao secundario" routerLink="/processos-seletivos">Voltar</a>
+    </div>
+  </form>
+</div>

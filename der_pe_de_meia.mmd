@@ -1,0 +1,148 @@
+%% DER (lógico/físico) - Projeto Pé-de-Meia, MySQL 8.0+
+%% Fonte: script SQL do arquivo banco_de_dados (seção 3)
+erDiagram
+    USUARIOS {
+        bigint id PK
+        varchar nome
+        varchar email UK
+        varchar senha_hash
+        enum perfil
+        boolean ativo
+        timestamp criado_em
+    }
+    ALUNOS {
+        bigint id PK
+        varchar nome
+        varchar matricula_escolar UK
+        date data_nascimento
+        varchar email
+        varchar telefone
+        boolean ativo
+        timestamp criado_em
+    }
+    PERIODOS_LETIVOS {
+        bigint id PK
+        varchar nome
+        date data_inicio
+        date data_fim
+        boolean ativo
+    }
+    MATRICULAS {
+        bigint id PK
+        bigint aluno_id FK
+        bigint periodo_letivo_id FK
+        tinyint ano_escolar
+        varchar turma
+        enum status
+    }
+    PROVAS {
+        bigint id PK
+        bigint periodo_letivo_id FK
+        varchar titulo
+        text descricao
+        date data_aplicacao
+        decimal nota_maxima
+        bigint criada_por FK
+        timestamp criada_em
+    }
+    NOTAS_PROVAS {
+        bigint id PK
+        bigint prova_id FK
+        bigint matricula_id FK
+        decimal nota
+        bigint lancada_por FK
+        timestamp lancada_em
+    }
+    DISCIPLINAS {
+        bigint id PK
+        varchar nome UK
+        boolean ativa
+    }
+    MEDIAS_DISCIPLINAS {
+        bigint id PK
+        bigint matricula_id FK
+        bigint disciplina_id FK
+        bigint periodo_letivo_id FK
+        decimal media
+        bigint atualizada_por FK
+        timestamp atualizada_em
+    }
+    FREQUENCIAS {
+        bigint id PK
+        bigint matricula_id FK
+        bigint disciplina_id FK
+        date data_aula
+        enum situacao
+        text justificativa
+        boolean justificativa_aceita
+        bigint analisada_por FK
+        datetime analisada_em
+        bigint registrada_por FK
+        timestamp registrada_em
+    }
+    PROCESSOS_SELETIVOS {
+        bigint id PK
+        bigint periodo_letivo_id FK
+        bigint prova_id FK
+        enum status
+        datetime iniciado_em
+        datetime encerrado_em
+        bigint criado_por FK
+    }
+    CLASSIFICACOES {
+        bigint id PK
+        bigint processo_seletivo_id FK
+        bigint matricula_id FK
+        decimal nota_final
+        smallint posicao
+        boolean selecionado
+        timestamp calculada_em
+    }
+    BOLSAS {
+        bigint id PK
+        bigint matricula_id FK
+        bigint processo_seletivo_id FK
+        decimal valor_mensal
+        date data_inicio
+        date data_fim
+        enum situacao
+        text motivo_cancelamento
+        bigint cancelada_por FK
+        datetime cancelada_em
+        timestamp criada_em
+    }
+    HISTORICO_BOLSAS {
+        bigint id PK
+        bigint bolsa_id FK
+        enum situacao_anterior
+        enum situacao_nova
+        text motivo
+        bigint alterada_por FK
+        timestamp alterada_em
+    }
+
+    PERIODOS_LETIVOS ||--o{ MATRICULAS : "agrupa"
+    ALUNOS ||--o{ MATRICULAS : "é matriculado em"
+    PERIODOS_LETIVOS ||--o{ PROVAS : "tem"
+    USUARIOS |o--o{ PROVAS : "cria"
+    PROVAS ||--o{ NOTAS_PROVAS : "gera"
+    MATRICULAS ||--o{ NOTAS_PROVAS : "recebe"
+    USUARIOS |o--o{ NOTAS_PROVAS : "lança"
+    MATRICULAS ||--o{ MEDIAS_DISCIPLINAS : "possui"
+    DISCIPLINAS ||--o{ MEDIAS_DISCIPLINAS : "é usada em"
+    PERIODOS_LETIVOS ||--o{ MEDIAS_DISCIPLINAS : "referente a"
+    USUARIOS |o--o{ MEDIAS_DISCIPLINAS : "atualiza"
+    MATRICULAS ||--o{ FREQUENCIAS : "registra"
+    DISCIPLINAS |o--o{ FREQUENCIAS : "se refere a"
+    USUARIOS |o--o{ FREQUENCIAS : "analisa"
+    USUARIOS |o--o{ FREQUENCIAS : "registra"
+    PERIODOS_LETIVOS ||--o{ PROCESSOS_SELETIVOS : "organiza"
+    PROVAS ||--o{ PROCESSOS_SELETIVOS : "é utilizada em"
+    USUARIOS |o--o{ PROCESSOS_SELETIVOS : "cria"
+    PROCESSOS_SELETIVOS ||--o{ CLASSIFICACOES : "gera"
+    MATRICULAS ||--o{ CLASSIFICACOES : "é classificada em"
+    MATRICULAS ||--o{ BOLSAS : "recebe"
+    PROCESSOS_SELETIVOS ||--o{ BOLSAS : "concede"
+    USUARIOS |o--o{ BOLSAS : "cancela"
+    BOLSAS ||--o{ HISTORICO_BOLSAS : "tem"
+    USUARIOS |o--o{ HISTORICO_BOLSAS : "altera"

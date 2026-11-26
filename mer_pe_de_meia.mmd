@@ -1,0 +1,18 @@
+%% MER (conceptual) - Projeto Pé-de-Meia
+%% Relacionamentos N:N ainda não resolvidos; a tabela associativa aparece só no DER.
+erDiagram
+    ALUNO ||--o{ MATRICULA : "é matriculado em"
+    PERIODO_LETIVO ||--o{ MATRICULA : "agrupa"
+    PERIODO_LETIVO ||--o{ PROVA : "tem"
+    PERIODO_LETIVO ||--o{ PROCESSO_SELETIVO : "organiza"
+    PROVA ||--o{ PROCESSO_SELETIVO : "é utilizada em"
+    USUARIO |o--o{ PROVA : "cria"
+    MATRICULA }o--o{ PROVA : "recebe nota em"
+    MATRICULA }o--o{ DISCIPLINA : "tem média em"
+    MATRICULA ||--o{ FREQUENCIA : "registra"
+    DISCIPLINA |o--o{ FREQUENCIA : "se refere a"
+    MATRICULA }o--o{ PROCESSO_SELETIVO : "é classificada em"
+    MATRICULA ||--o{ BOLSA : "recebe"
+    PROCESSO_SELETIVO ||--o{ BOLSA : "concede"
+    BOLSA ||--o{ HISTORICO_BOLSA : "tem"
+    USUARIO |o--o{ HISTORICO_BOLSA : "altera"

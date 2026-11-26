@@ -1,0 +1,138 @@
+<h1>Notas da prova</h1>
+
+<div class="acoes">
+  <a class="botao secundario" routerLink="/provas">Voltar para provas</a>
+</div>
+
+<app-mensagem-erro [erro]="erroProva()" />
+@if (carregandoProva()) {
+  <p class="carregando" role="status">Carregando prova...</p>
+}
+
+@if (prova(); as p) {
+  <section class="cartao">
+    <h2>{{ p.titulo }}</h2>
+    <p>Nota máxima: <strong>{{ formatarNota(p.notaMaxima) }}</strong></p>
+  </section>
+
+  <section class="cartao">
+    <h2>Lançar nota</h2>
+
+    @if (sucessoLancamento(); as texto) {
+      <div class="alerta alerta-sucesso" role="status"><p>{{ texto }}</p></div>
+    }
+    <app-mensagem-erro [erro]="erroLancamento()" />
+
+    <app-mensagem-erro [erro]="erroMatriculas()" />
+    @if (carregandoMatriculas()) {
+      <p class="carregando" role="status">Carregando alunos do período...</p>
+    }
+
+    @if (matriculasPagina(); as mp) {
+      @if (mp.totalElementos === 0 && !carregandoMatriculas()) {
+        <p class="vazio">Nenhum aluno matriculado no período desta prova.</p>
+      }
+      @if (mp.totalElementos > 0) {
+        <form [formGroup]="lancamentoForm" (ngSubmit)="lancar()" class="grade-campos" novalidate>
+          <div class="campo">
+            <label for="nota-matricula">Aluno *</label>
+            <select id="nota-matricula" formControlName="matriculaId">
+              <option [ngValue]="null">Escolha o aluno</option>
+              @for (matricula of mp.conteudo; track matricula.id) {
+                <option [ngValue]="matricula.id">{{ matricula.nomeAluno }} ({{ matricula.matriculaEscolar }})</option>
+              }
+            </select>
+            @if (lancamentoForm.controls.matriculaId.touched && lancamentoForm.controls.matriculaId.hasError('required')) {
+              <span class="erro-campo">Escolha o aluno.</span>
+            }
+          </div>
+          <div class="campo">
+            <label for="nota-valor">Nota *</label>
+            <input id="nota-valor" type="number" step="0.01" min="0" [max]="p.notaMaxima" formControlName="nota" />
+            <span class="dica">Entre 0 e {{ formatarNota(p.notaMaxima) }}, com até duas casas decimais.</span>
+            @if (lancamentoForm.controls.nota.touched && lancamentoForm.controls.nota.hasError('required')) {
+              <span class="erro-campo">Informe a nota.</span>
+            }
+            @if (lancamentoForm.controls.nota.touched && lancamentoForm.controls.nota.hasError('duasCasasDecimais')) {
+              <span class="erro-campo">Use no máximo duas casas decimais.</span>
+            }
+          </div>
+          <div class="acoes">
+            <button type="submit" class="botao" [disabled]="enviandoNota()">
+              {{ enviandoNota() ? 'Lançando...' : 'Lançar nota' }}
+            </button>
+          </div>
+        </form>
+
+        <app-paginacao
+          [pagina]="mp.pagina"
+          [totalPaginas]="mp.totalPaginas"
+          (mudarPagina)="mudarPaginaMatriculas($event)"
+        />
+      }
+    }
+  </section>
+
+  <section class="cartao">
+    <h2>Notas lançadas</h2>
+    <app-mensagem-erro [erro]="erroNotas()" />
+    @if (carregandoNotas()) {
+      <p class="carregando" role="status">Carregando notas...</p>
+    }
+    @if (notasPagina(); as np) {
+      @if (np.totalElementos === 0 && !carregandoNotas()) {
+        <p class="vazio">Nenhuma nota lançada nesta prova.</p>
+      }
+      @if (np.totalElementos > 0) {
+        <app-mensagem-erro [erro]="erroCorrecao()" />
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Aluno</th>
+              <th>Matrícula escolar</th>
+              <th>Nota</th>
+              <th>Lançada em</th>
+              <th>Corrigida em</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (nota of np.conteudo; track nota.id) {
+              <tr>
+                <td data-rotulo="Aluno">{{ nota.nomeAluno }}</td>
+                <td data-rotulo="Matrícula escolar">{{ nota.matriculaEscolar }}</td>
+                <td data-rotulo="Nota">
+                  @if (notaEmCorrecao() === nota.id) {
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      [max]="p.notaMaxima"
+                      [formControl]="correcaoControle"
+                      aria-label="Nova nota"
+                    />
+                  } @else {
+                    {{ formatarNota(nota.nota) }}
+                  }
+                </td>
+                <td data-rotulo="Lançada em">{{ formatarInstante(nota.lancadaEm) }}</td>
+                <td data-rotulo="Corrigida em">{{ formatarInstante(nota.alteradaEm) }}</td>
+                <td data-rotulo="Ações">
+                  @if (notaEmCorrecao() === nota.id) {
+                    <span class="acoes">
+                      <button type="button" class="botao" [disabled]="enviandoCorrecao()" (click)="salvarCorrecao(nota)">Salvar</button>
+                      <button type="button" class="botao secundario" (click)="cancelarCorrecao()">Cancelar</button>
+                    </span>
+                  } @else {
+                    <button type="button" class="botao secundario" (click)="iniciarCorrecao(nota)">Corrigir</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <app-paginacao [pagina]="np.pagina" [totalPaginas]="np.totalPaginas" (mudarPagina)="mudarPaginaNotas($event)" />
+      }
+    }
+  </section>
+}

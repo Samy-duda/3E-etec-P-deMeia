@@ -1,0 +1,54 @@
+<h1>Novo aluno</h1>
+
+<div class="cartao">
+  @if (sucesso(); as texto) {
+    <div class="alerta alerta-sucesso" role="status"><p>{{ texto }}</p></div>
+  }
+
+  <app-mensagem-erro [erro]="erro()" />
+
+  <form [formGroup]="form" (ngSubmit)="salvar()" novalidate>
+    <div class="grade-campos">
+      <div class="campo">
+        <label for="nome">Nome completo *</label>
+        <input id="nome" type="text" formControlName="nome" maxlength="120" />
+        @if (form.controls.nome.touched && form.controls.nome.hasError('required')) {
+          <span class="erro-campo">Informe o nome.</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="matricula">Matrícula escolar *</label>
+        <input id="matricula" type="text" formControlName="matriculaEscolar" maxlength="30" />
+        @if (form.controls.matriculaEscolar.touched && form.controls.matriculaEscolar.hasError('required')) {
+          <span class="erro-campo">Informe a matrícula escolar.</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="nascimento">Data de nascimento *</label>
+        <input id="nascimento" type="date" formControlName="dataNascimento" />
+        @if (form.controls.dataNascimento.touched && form.controls.dataNascimento.hasError('required')) {
+          <span class="erro-campo">Informe a data de nascimento.</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="email">E-mail (opcional)</label>
+        <input id="email" type="email" formControlName="email" maxlength="255" />
+      </div>
+
+      <div class="campo">
+        <label for="telefone">Telefone (opcional)</label>
+        <input id="telefone" type="tel" formControlName="telefone" maxlength="20" />
+      </div>
+    </div>
+
+    <div class="acoes">
+      <button type="submit" class="botao" [disabled]="enviando()">
+        {{ enviando() ? 'Salvando...' : 'Cadastrar aluno' }}
+      </button>
+      <a class="botao secundario" routerLink="/alunos">Voltar para alunos</a>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,74 @@
+<h1>Usuários</h1>
+
+<section class="cartao">
+  <h2>Contas de acesso</h2>
+  <app-mensagem-erro [erro]="erro()" />
+  @if (carregando()) {
+    <p class="carregando" role="status">Carregando usuários...</p>
+  }
+  @if (resultado(); as pagina) {
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>E-mail</th>
+          <th>Perfil</th>
+          <th>Ativo</th>
+          <th>Criado em</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (usuario of pagina.conteudo; track usuario.id) {
+          <tr>
+            <td data-rotulo="Nome">{{ usuario.nome }}</td>
+            <td data-rotulo="E-mail">{{ usuario.email }}</td>
+            <td data-rotulo="Perfil">{{ usuario.perfil }}</td>
+            <td data-rotulo="Ativo">{{ usuario.ativo ? 'Sim' : 'Não' }}</td>
+            <td data-rotulo="Criado em">{{ formatarInstante(usuario.criadoEm) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    <app-paginacao [pagina]="pagina.pagina" [totalPaginas]="pagina.totalPaginas" (mudarPagina)="mudarPagina($event)" />
+  }
+</section>
+
+<section class="cartao">
+  <h2>Nova conta</h2>
+
+  @if (sucesso(); as texto) {
+    <div class="alerta alerta-sucesso" role="status"><p>{{ texto }}</p></div>
+  }
+  <app-mensagem-erro [erro]="erroCadastro()" />
+
+  <form [formGroup]="form" (ngSubmit)="criar()" class="grade-campos" novalidate>
+    <div class="campo">
+      <label for="usuario-nome">Nome *</label>
+      <input id="usuario-nome" type="text" formControlName="nome" maxlength="120" />
+    </div>
+    <div class="campo">
+      <label for="usuario-email">E-mail *</label>
+      <input id="usuario-email" type="text" formControlName="email" maxlength="255" />
+    </div>
+    <div class="campo">
+      <label for="usuario-senha">Senha * (mínimo 8 caracteres)</label>
+      <input id="usuario-senha" type="password" formControlName="senha" minlength="8" maxlength="128" autocomplete="new-password" />
+      @if (form.controls.senha.touched && form.controls.senha.hasError('minlength')) {
+        <span class="erro-campo">A senha deve ter ao menos 8 caracteres.</span>
+      }
+    </div>
+    <div class="campo">
+      <label for="usuario-perfil">Perfil *</label>
+      <select id="usuario-perfil" formControlName="perfil">
+        @for (perfil of perfis; track perfil) {
+          <option [value]="perfil">{{ perfil }}</option>
+        }
+      </select>
+    </div>
+    <div class="acoes">
+      <button type="submit" class="botao" [disabled]="enviando()">
+        {{ enviando() ? 'Criando...' : 'Criar conta' }}
+      </button>
+    </div>
+  </form>
+</section>

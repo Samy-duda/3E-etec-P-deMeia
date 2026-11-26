@@ -1,0 +1,8 @@
+# Build e IDE
+target/
+.idea/
+*.iml
+.vscode/
+
+# Segredos locais (ADR-007, 05-estrutura-pastas.md, seção 8)
+.env

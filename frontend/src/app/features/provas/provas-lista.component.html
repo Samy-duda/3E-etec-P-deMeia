@@ -1,0 +1,59 @@
+<h1>Provas</h1>
+
+<div class="acoes">
+  <a class="botao" routerLink="/provas/nova">Nova prova</a>
+</div>
+
+<section class="cartao">
+  <form [formGroup]="filtroForm" (ngSubmit)="aplicarFiltro()" class="grade-campos">
+    <div class="campo">
+      <label for="filtro-periodo">Período letivo</label>
+      <select id="filtro-periodo" formControlName="periodoLetivoId">
+        <option value="">Todos os períodos</option>
+        @for (periodo of periodosDisponiveis(); track periodo.id) {
+          <option [value]="periodo.id">{{ periodo.nome }}</option>
+        }
+      </select>
+    </div>
+  </form>
+</section>
+
+<app-mensagem-erro [erro]="erro()" />
+
+@if (carregando()) {
+  <p class="carregando" role="status">Carregando provas...</p>
+}
+
+@if (resultado(); as pagina) {
+  <section class="cartao">
+    @if (pagina.totalElementos === 0 && !carregando()) {
+      <p class="vazio">Nenhuma prova encontrada.</p>
+    } @else {
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Título</th>
+            <th>Período</th>
+            <th>Aplicação</th>
+            <th>Nota máxima</th>
+            <th>Notas</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (prova of pagina.conteudo; track prova.id) {
+            <tr>
+              <td data-rotulo="Título">{{ prova.titulo }}</td>
+              <td data-rotulo="Período">{{ nomePeriodo(prova.periodoLetivoId) }}</td>
+              <td data-rotulo="Aplicação">{{ formatarData(prova.dataAplicacao) }}</td>
+              <td data-rotulo="Nota máxima">{{ formatarNota(prova.notaMaxima) }}</td>
+              <td data-rotulo="Notas">
+                <a [routerLink]="['/provas', prova.id, 'notas']">Lançar e consultar</a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-paginacao [pagina]="pagina.pagina" [totalPaginas]="pagina.totalPaginas" (mudarPagina)="mudarPagina($event)" />
+    }
+  </section>
+}
