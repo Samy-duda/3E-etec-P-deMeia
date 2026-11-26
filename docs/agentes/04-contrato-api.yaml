@@ -1,0 +1,1465 @@
+openapi: 3.0.3
+info:
+  title: Pé-de-Meia - API do MVP (P0)
+  version: 1.0.0
+  description: |
+    Contrato do MVP do Projeto Pé-de-Meia. Fonte: docs/agentes/01-requisitos-mvp.md e docs/agentes/02-arquitetura.md.
+
+    Convenções:
+    - Base: /api. Autenticação Bearer JWT, exceto POST /auth/login.
+    - Cada operação traz `x-perfis` (perfis permitidos) e `x-criterios` (MVP-CA e MVP-RF/RNF atendidos).
+    - Perfis: ADMIN (acesso total), SECRETARIA (cadastros, provas, notas, processos e bolsas), CONSULTA (somente classificações, bolsas e metadados de processo, sem dados pessoais além do definido em Q03).
+    - Erros: todos seguem o schema ErroResposta. O campo `codigo` é um valor de CodigoErro. O frontend decide a mensagem pelo código.
+    - Campos marcados como "(ADMIN, SECRETARIA)" não são devolvidos para CONSULTA.
+    - Datas: yyyy-MM-dd. Instantes: date-time em UTC. Notas e valores: número com duas casas decimais.
+    - Paginação: parâmetros `pagina` (base zero) e `tamanho`. Resposta paginada tem `conteudo`, `pagina`, `tamanho`, `totalElementos`, `totalPaginas`.
+    - Sem endpoint de cancelamento ou alteração de situação de bolsa (MVP-CA30). Chamadas a rotas inexistentes devolvem 404.
+
+servers:
+  - url: http://localhost:8080/api
+    description: Desenvolvimento
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Autenticação
+  - name: Usuários
+  - name: Alunos
+  - name: Períodos letivos
+  - name: Matrículas
+  - name: Provas
+  - name: Notas
+  - name: Processos seletivos
+  - name: Classificação
+  - name: Bolsas
+
+paths:
+
+  /auth/login:
+    post:
+      tags: [Autenticação]
+      operationId: autenticar
+      summary: Autentica o usuário e devolve o JWT
+      security: []
+      x-perfis: [público]
+      x-criterios: [MVP-RNF01, MVP-CA10]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          description: E-mail ou senha inválidos (CREDENCIAIS_INVALIDAS). Usuário inativo recebe o mesmo erro.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+
+  /auth/me:
+    get:
+      tags: [Autenticação]
+      operationId: usuarioAtual
+      summary: Dados do usuário autenticado
+      x-perfis: [ADMIN, SECRETARIA, CONSULTA]
+      x-criterios: [MVP-RNF01]
+      responses:
+        '200':
+          description: Usuário do token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResumo'
+        '401':
+          $ref: '#/components/responses/Erro401'
+
+  /usuarios:
+    get:
+      tags: [Usuários]
+      operationId: listarUsuarios
+      summary: Lista contas (paginada)
+      x-perfis: [ADMIN]
+      x-criterios: [MVP-RNF01]
+      parameters:
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/Tamanho'
+      responses:
+        '200':
+          description: Página de usuários.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioPagina'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+    post:
+      tags: [Usuários]
+      operationId: criarUsuario
+      summary: Cria uma conta de acesso (mínimo para os perfis de teste, D18)
+      x-perfis: [ADMIN]
+      x-criterios: [MVP-RNF01]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioRequest'
+      responses:
+        '201':
+          description: Conta criada. Senha não é devolvida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResposta'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '409':
+          $ref: '#/components/responses/Erro409'
+
+  /alunos:
+    get:
+      tags: [Alunos]
+      operationId: listarAlunos
+      summary: Lista alunos (paginada), com busca por matrícula escolar ou nome
+      description: Busca por `matriculaEscolar` (igualdade exata) e por `nome` (contém, sem diferenciar maiúsculas, Q18). Os filtros podem ser combinados.
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA02, MVP-RF02]
+      parameters:
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/Tamanho'
+        - name: matriculaEscolar
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 30
+        - name: nome
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 120
+      responses:
+        '200':
+          description: Página de alunos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlunoPagina'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+    post:
+      tags: [Alunos]
+      operationId: cadastrarAluno
+      summary: Cadastra um aluno
+      description: Duplicidade é verificada pela matrícula escolar (PROPOSTA-C, Q02). Campos ausentes são recusados (MVP-CA04).
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA01, MVP-CA03, MVP-CA04, MVP-RF01]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlunoRequest'
+      responses:
+        '201':
+          description: Aluno criado.
+          headers:
+            Location:
+              description: URL do aluno criado.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlunoResposta'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '409':
+          $ref: '#/components/responses/Erro409'
+
+  /alunos/{alunoId}:
+    get:
+      tags: [Alunos]
+      operationId: consultarAluno
+      summary: Consulta um aluno pelo id
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA02, MVP-RF02]
+      parameters:
+        - $ref: '#/components/parameters/AlunoId'
+      responses:
+        '200':
+          description: Aluno encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlunoResposta'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+
+  /periodos-letivos:
+    get:
+      tags: [Períodos letivos]
+      operationId: listarPeriodosLetivos
+      summary: Lista os períodos letivos
+      description: Não paginada. Quantidade esperada é pequena.
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-RF03, MVP-CA05]
+      responses:
+        '200':
+          description: Lista de períodos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PeriodoLetivoResposta'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+    post:
+      tags: [Períodos letivos]
+      operationId: criarPeriodoLetivo
+      summary: Cadastra um período letivo
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-RF03, MVP-CA05]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PeriodoLetivoRequest'
+      responses:
+        '201':
+          description: Período criado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeriodoLetivoResposta'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+
+  /periodos-letivos/{periodoId}/matriculas:
+    get:
+      tags: [Matrículas]
+      operationId: listarMatriculas
+      summary: Lista as matrículas de um período (paginada)
+      description: Usada na tela de lançamento de notas para escolher o aluno. Inclui nome e matrícula escolar do aluno.
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-RF03, MVP-RF05, MVP-CA14]
+      parameters:
+        - $ref: '#/components/parameters/PeriodoId'
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/Tamanho'
+      responses:
+        '200':
+          description: Página de matrículas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatriculaPagina'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    post:
+      tags: [Matrículas]
+      operationId: matricularAluno
+      summary: Matricula um aluno em um período, com ano escolar
+      description: Um aluno tem no máximo uma matrícula por período (MVP-CA07). O ano escolar válido é 1, 2 ou 3 (P05, MVP-CA06).
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA05, MVP-CA06, MVP-CA07, MVP-RF03]
+      parameters:
+        - $ref: '#/components/parameters/PeriodoId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatriculaRequest'
+      responses:
+        '201':
+          description: Matrícula criada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatriculaResposta'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '409':
+          $ref: '#/components/responses/Erro409'
+
+  /provas:
+    get:
+      tags: [Provas]
+      operationId: listarProvas
+      summary: Lista provas (paginada), com filtro opcional por período
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA08, MVP-RF04]
+      parameters:
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/Tamanho'
+        - name: periodoLetivoId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Página de provas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProvaPagina'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+    post:
+      tags: [Provas]
+      operationId: cadastrarProva
+      summary: Cadastra uma prova em um período letivo
+      description: A nota máxima é maior que zero (P04, MVP-CA09). Ausente ou não positiva é recusada com VALIDACAO_INVALIDA.
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA08, MVP-CA09, MVP-RF04]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProvaRequest'
+      responses:
+        '201':
+          description: Prova criada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProvaResposta'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+
+  /provas/{provaId}:
+    get:
+      tags: [Provas]
+      operationId: consultarProva
+      summary: Consulta uma prova
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA08]
+      parameters:
+        - $ref: '#/components/parameters/ProvaId'
+      responses:
+        '200':
+          description: Prova encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProvaResposta'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+
+  /provas/{provaId}/notas:
+    get:
+      tags: [Notas]
+      operationId: listarNotas
+      summary: Lista as notas de uma prova (paginada)
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA11, MVP-RF05]
+      parameters:
+        - $ref: '#/components/parameters/ProvaId'
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/Tamanho'
+      responses:
+        '200':
+          description: Página de notas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotaPagina'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    post:
+      tags: [Notas]
+      operationId: lancarNota
+      summary: Lança a nota de um aluno matriculado no período da prova
+      description: |
+        Regras, nesta ordem de verificação:
+        1. Nota com valor negativo ou ausente: VALIDACAO_INVALIDA (400).
+        2. Matrícula não pertence ao período da prova: ALUNO_NAO_MATRICULADO_NO_PERIODO (422), MVP-CA14.
+        3. Nota acima da nota máxima da prova: NOTA_FORA_DO_INTERVALO (422), P04, MVP-CA12.
+        4. Já existe nota desta matrícula nesta prova: NOTA_DUPLICADA (409), MVP-CA13.
+        5. A classificação do processo desta prova já foi gerada: CLASSIFICACAO_JA_GERADA (409), Q07.
+        A nota 0 e a nota máxima são aceitas (MVP-CA12, complemento).
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA11, MVP-CA12, MVP-CA13, MVP-CA14, MVP-RF05, MVP-RNF06]
+      parameters:
+        - $ref: '#/components/parameters/ProvaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotaRequest'
+      responses:
+        '201':
+          description: Nota lançada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotaResposta'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '409':
+          $ref: '#/components/responses/Erro409'
+        '422':
+          $ref: '#/components/responses/Erro422'
+
+  /provas/{provaId}/notas/{notaId}:
+    put:
+      tags: [Notas]
+      operationId: corrigirNota
+      summary: Corrige a nota de um aluno
+      description: Permitido somente antes da geração da classificação do processo desta prova (Q07). Registra quem e quando corrigiu (alterada_por, alterada_em).
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-RF05, MVP-CA12, MVP-RNF06, Q07]
+      parameters:
+        - $ref: '#/components/parameters/ProvaId'
+        - $ref: '#/components/parameters/NotaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotaCorrecaoRequest'
+      responses:
+        '200':
+          description: Nota corrigida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotaResposta'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '409':
+          $ref: '#/components/responses/Erro409'
+        '422':
+          $ref: '#/components/responses/Erro422'
+
+  /processos-seletivos:
+    get:
+      tags: [Processos seletivos]
+      operationId: listarProcessosSeletivos
+      summary: Lista processos seletivos (paginada)
+      description: CONSULTA pode listar para navegar até a classificação e as bolsas. Não há dado pessoal nesta resposta.
+      x-perfis: [ADMIN, SECRETARIA, CONSULTA]
+      x-criterios: [MVP-RF10, MVP-CA28, MVP-CA29]
+      parameters:
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/Tamanho'
+        - name: periodoLetivoId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Página de processos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessoSeletivoPagina'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+    post:
+      tags: [Processos seletivos]
+      operationId: criarProcessoSeletivo
+      summary: Cria um processo seletivo ligando um período e uma prova
+      description: Uma prova tem no máximo um processo (P-DER-4, Q16). A prova deve pertencer ao período informado.
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA15, MVP-RF06]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessoSeletivoRequest'
+      responses:
+        '201':
+          description: Processo criado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessoSeletivoResposta'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '409':
+          $ref: '#/components/responses/Erro409'
+        '422':
+          $ref: '#/components/responses/Erro422'
+
+  /processos-seletivos/{processoId}:
+    get:
+      tags: [Processos seletivos]
+      operationId: consultarProcessoSeletivo
+      summary: Consulta um processo seletivo
+      x-perfis: [ADMIN, SECRETARIA, CONSULTA]
+      x-criterios: [MVP-CA15, MVP-RF10]
+      parameters:
+        - $ref: '#/components/parameters/ProcessoId'
+      responses:
+        '200':
+          description: Processo encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessoSeletivoResposta'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+
+  /processos-seletivos/{processoId}/classificacao:
+    get:
+      tags: [Classificação]
+      operationId: consultarClassificacao
+      summary: Consulta a classificação do processo, opcionalmente por ano escolar
+      description: |
+        Se a classificação ainda não foi gerada, responde 200 com `calculadaEm` nulo e `itens` vazio.
+        Ordem: ano escolar crescente, depois posição crescente.
+        `matriculaEscolar` só aparece para ADMIN e SECRETARIA. Para CONSULTA, a resposta traz nome, posição, nota e situação (Q03). `dataNascimento` nunca é devolvida em classificação.
+      x-perfis: [ADMIN, SECRETARIA, CONSULTA]
+      x-criterios: [MVP-CA28, MVP-CA10, MVP-RF10]
+      parameters:
+        - $ref: '#/components/parameters/ProcessoId'
+        - name: anoEscolar
+          in: query
+          required: false
+          description: Filtra por ano escolar (1, 2 ou 3).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 3
+      responses:
+        '200':
+          description: Classificação do processo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificacaoResposta'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    post:
+      tags: [Classificação]
+      operationId: gerarClassificacao
+      summary: Gera a classificação por ano escolar e executa a seleção dos 10 melhores de cada ano
+      description: |
+        Operação única e atômica (ADR-004). Faz, nesta ordem:
+        1. Recusa se não há nenhuma nota na prova (SEM_NOTAS_PARA_CLASSIFICACAO, MVP-CA16).
+        2. Recusa se a classificação já existe (CLASSIFICACAO_JA_GERADA, 409).
+        3. Ordena por ano escolar com o desempate P01: nota final decrescente, data de nascimento crescente, nome (sem acento, caixa alta) crescente, id crescente.
+        4. Atribui posições sequenciais por ano, sem ex-aequo (MVP-CA18).
+        5. Marca `selecionado = true` para as posições até `vagasPorAno` (padrão 10, P05). Ano com menos alunos seleciona todos (PROPOSTA-B).
+        Se qualquer passo falhar, nada é gravado.
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA16, MVP-CA17, MVP-CA18, MVP-CA19, MVP-CA20, MVP-CA21, MVP-CA22, MVP-CA23, MVP-RF07, MVP-RF08]
+      parameters:
+        - $ref: '#/components/parameters/ProcessoId'
+      responses:
+        '201':
+          description: Classificação gerada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificacaoResposta'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '409':
+          $ref: '#/components/responses/Erro409'
+        '422':
+          $ref: '#/components/responses/Erro422'
+
+  /processos-seletivos/{processoId}/bolsas:
+    get:
+      tags: [Bolsas]
+      operationId: listarBolsas
+      summary: Lista as bolsas concedidas no processo, com situação
+      description: |
+        Ordem: ano escolar crescente, depois posição crescente.
+        Não há operação de cancelamento ou alteração de situação no MVP (MVP-CA30). Toda bolsa listada tem situação ATIVA.
+        `matriculaEscolar`, `criadaPorId` e `criadaEm` só aparecem para ADMIN e SECRETARIA.
+      x-perfis: [ADMIN, SECRETARIA, CONSULTA]
+      x-criterios: [MVP-CA29, MVP-RF10, MVP-CA30]
+      parameters:
+        - $ref: '#/components/parameters/ProcessoId'
+      responses:
+        '200':
+          description: Lista de bolsas (vazia se não houver concessão).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BolsaResposta'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    post:
+      tags: [Bolsas]
+      operationId: concederBolsas
+      summary: Concede bolsas de R$ 300,00 aos selecionados do processo, em lote ou para um aluno
+      description: |
+        Dois modos, conforme o corpo:
+        - Sem `matriculaId`: concede a todos os selecionados que ainda não têm bolsa neste processo (MVP-CA24). Se não houver pendente, 409 BOLSAS_JA_CONCEDIDAS.
+        - Com `matriculaId`: concede só a esse aluno. Aluno não selecionado: ALUNO_NAO_SELECIONADO (MVP-CA26). Aluno sem linha na classificação: ALUNO_NAO_CLASSIFICADO. Já tem bolsa: BOLSA_JA_EXISTE (MVP-CA27).
+
+        `valorMensal` é opcional. Se informado, deve ser igual ao valor de configuração (R$ 300,00). Valor diferente: VALOR_BOLSA_INVALIDO (422), MVP-CA25. Se omitido, usa o valor de configuração (D07).
+        Sem classificação gerada: CLASSIFICACAO_NAO_GERADA (422).
+        Lote é atômico: se uma bolsa falhar, nenhuma é criada.
+        Não há cancelamento de bolsa no MVP (MVP-CA30).
+      x-perfis: [ADMIN, SECRETARIA]
+      x-criterios: [MVP-CA24, MVP-CA25, MVP-CA26, MVP-CA27, MVP-RF09, MVP-RNF03, MVP-RNF06]
+      parameters:
+        - $ref: '#/components/parameters/ProcessoId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConcessaoBolsaRequest'
+      responses:
+        '201':
+          description: Bolsas criadas (lista com as bolsas concedidas nesta chamada).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BolsaResposta'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '409':
+          $ref: '#/components/responses/Erro409'
+        '422':
+          $ref: '#/components/responses/Erro422'
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Pagina:
+      name: pagina
+      in: query
+      required: false
+      description: Página, base zero.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
+    Tamanho:
+      name: tamanho
+      in: query
+      required: false
+      description: Itens por página.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 100
+        default: 20
+    AlunoId:
+      name: alunoId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    PeriodoId:
+      name: periodoId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ProvaId:
+      name: provaId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    NotaId:
+      name: notaId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ProcessoId:
+      name: processoId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+  responses:
+    Erro400:
+      description: Validação falhou (VALIDACAO_INVALIDA). `campos` indica os campos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroResposta'
+    Erro401:
+      description: Sem token, token inválido ou expirado (NAO_AUTENTICADO).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroResposta'
+    Erro403:
+      description: Perfil sem permissão (ACESSO_NEGADO). Nenhum dado é alterado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroResposta'
+    Erro404:
+      description: Recurso não encontrado (RECURSO_NAO_ENCONTRADO).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroResposta'
+    Erro409:
+      description: Conflito ou duplicidade (ALUNO_DUPLICADO, MATRICULA_DUPLICADA, NOTA_DUPLICADA, PROCESSO_JA_EXISTE_PARA_PROVA, CLASSIFICACAO_JA_GERADA, BOLSA_JA_EXISTE, BOLSAS_JA_CONCEDIDAS, EMAIL_DUPLICADO).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroResposta'
+    Erro422:
+      description: Regra de negócio violada (NOTA_FORA_DO_INTERVALO, ALUNO_NAO_MATRICULADO_NO_PERIODO, PROVA_NAO_PERTENCE_AO_PERIODO, SEM_NOTAS_PARA_CLASSIFICACAO, CLASSIFICACAO_NAO_GERADA, ALUNO_NAO_CLASSIFICADO, ALUNO_NAO_SELECIONADO, VALOR_BOLSA_INVALIDO).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroResposta'
+
+  schemas:
+
+    ErroResposta:
+      type: object
+      required: [timestamp, status, codigo, mensagem, caminho, campos]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 422
+        codigo:
+          $ref: '#/components/schemas/CodigoErro'
+        mensagem:
+          type: string
+          example: A nota deve estar entre 0 e a nota máxima da prova (10,00).
+        caminho:
+          type: string
+          example: /api/provas/3/notas
+        campos:
+          type: array
+          description: Preenchido só em VALIDACAO_INVALIDA. Vazio nos demais.
+          items:
+            $ref: '#/components/schemas/CampoErro'
+
+    CampoErro:
+      type: object
+      required: [campo, mensagem]
+      properties:
+        campo:
+          type: string
+          example: dataNascimento
+        mensagem:
+          type: string
+          example: é obrigatório
+
+    CodigoErro:
+      type: string
+      enum:
+        - VALIDACAO_INVALIDA
+        - CREDENCIAIS_INVALIDAS
+        - NAO_AUTENTICADO
+        - ACESSO_NEGADO
+        - RECURSO_NAO_ENCONTRADO
+        - ALUNO_DUPLICADO
+        - EMAIL_DUPLICADO
+        - MATRICULA_DUPLICADA
+        - NOTA_DUPLICADA
+        - PROCESSO_JA_EXISTE_PARA_PROVA
+        - CLASSIFICACAO_JA_GERADA
+        - BOLSA_JA_EXISTE
+        - BOLSAS_JA_CONCEDIDAS
+        - NOTA_FORA_DO_INTERVALO
+        - ALUNO_NAO_MATRICULADO_NO_PERIODO
+        - PROVA_NAO_PERTENCE_AO_PERIODO
+        - SEM_NOTAS_PARA_CLASSIFICACAO
+        - CLASSIFICACAO_NAO_GERADA
+        - ALUNO_NAO_CLASSIFICADO
+        - ALUNO_NAO_SELECIONADO
+        - VALOR_BOLSA_INVALIDO
+        - ERRO_INTERNO
+
+    LoginRequest:
+      type: object
+      required: [email, senha]
+      properties:
+        email:
+          type: string
+          maxLength: 255
+          description: Sem validação de formato de e-mail (o domínio das contas de teste contém "_").
+          example: test@IA_admin
+        senha:
+          type: string
+          minLength: 1
+          maxLength: 128
+          format: password
+
+    LoginResponse:
+      type: object
+      required: [token, tipo, expiraEm, usuario]
+      properties:
+        token:
+          type: string
+          description: JWT.
+        tipo:
+          type: string
+          enum: [Bearer]
+        expiraEm:
+          type: string
+          format: date-time
+        usuario:
+          $ref: '#/components/schemas/UsuarioResumo'
+
+    UsuarioResumo:
+      type: object
+      required: [id, nome, email, perfil]
+      properties:
+        id:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        email:
+          type: string
+        perfil:
+          $ref: '#/components/schemas/Perfil'
+
+    Perfil:
+      type: string
+      enum: [ADMIN, SECRETARIA, CONSULTA]
+
+    UsuarioRequest:
+      type: object
+      required: [nome, email, senha, perfil]
+      properties:
+        nome:
+          type: string
+          maxLength: 120
+        email:
+          type: string
+          maxLength: 255
+        senha:
+          type: string
+          minLength: 8
+          maxLength: 128
+          format: password
+        perfil:
+          $ref: '#/components/schemas/Perfil'
+
+    UsuarioResposta:
+      type: object
+      required: [id, nome, email, perfil, ativo, criadoEm]
+      properties:
+        id:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        email:
+          type: string
+        perfil:
+          $ref: '#/components/schemas/Perfil'
+        ativo:
+          type: boolean
+        criadoEm:
+          type: string
+          format: date-time
+
+    UsuarioPagina:
+      allOf:
+        - $ref: '#/components/schemas/PaginaBase'
+        - type: object
+          properties:
+            conteudo:
+              type: array
+              items:
+                $ref: '#/components/schemas/UsuarioResposta'
+
+    AlunoRequest:
+      type: object
+      required: [nome, matriculaEscolar, dataNascimento]
+      properties:
+        nome:
+          type: string
+          maxLength: 120
+          example: Ana Souza
+        matriculaEscolar:
+          type: string
+          maxLength: 30
+          example: "2026-0001"
+        dataNascimento:
+          type: string
+          format: date
+          example: "2008-03-15"
+        email:
+          type: string
+          maxLength: 255
+          nullable: true
+        telefone:
+          type: string
+          maxLength: 20
+          nullable: true
+
+    AlunoResposta:
+      type: object
+      required: [id, nome, matriculaEscolar, dataNascimento, ativo, criadoEm]
+      properties:
+        id:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        matriculaEscolar:
+          type: string
+        dataNascimento:
+          type: string
+          format: date
+        email:
+          type: string
+          nullable: true
+        telefone:
+          type: string
+          nullable: true
+        ativo:
+          type: boolean
+        criadoEm:
+          type: string
+          format: date-time
+
+    AlunoPagina:
+      allOf:
+        - $ref: '#/components/schemas/PaginaBase'
+        - type: object
+          properties:
+            conteudo:
+              type: array
+              items:
+                $ref: '#/components/schemas/AlunoResposta'
+
+    PeriodoLetivoRequest:
+      type: object
+      required: [nome, dataInicio, dataFim]
+      properties:
+        nome:
+          type: string
+          maxLength: 60
+          example: "2026-1"
+        dataInicio:
+          type: string
+          format: date
+        dataFim:
+          type: string
+          format: date
+          description: Deve ser igual ou posterior a dataInicio. Senão, VALIDACAO_INVALIDA.
+
+    PeriodoLetivoResposta:
+      type: object
+      required: [id, nome, dataInicio, dataFim, ativo]
+      properties:
+        id:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        dataInicio:
+          type: string
+          format: date
+        dataFim:
+          type: string
+          format: date
+        ativo:
+          type: boolean
+
+    MatriculaRequest:
+      type: object
+      required: [alunoId, anoEscolar]
+      properties:
+        alunoId:
+          type: integer
+          format: int64
+        anoEscolar:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: Ano escolar 1, 2 ou 3 (P05). Fora disso, VALIDACAO_INVALIDA (400).
+          example: 2
+        turma:
+          type: string
+          maxLength: 20
+          nullable: true
+          description: Opcional (Q09). Não é usada nas regras.
+
+    MatriculaResposta:
+      type: object
+      required: [id, alunoId, nomeAluno, matriculaEscolar, periodoLetivoId, anoEscolar, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        alunoId:
+          type: integer
+          format: int64
+        nomeAluno:
+          type: string
+        matriculaEscolar:
+          type: string
+        periodoLetivoId:
+          type: integer
+          format: int64
+        anoEscolar:
+          type: integer
+        turma:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ATIVA]
+
+    MatriculaPagina:
+      allOf:
+        - $ref: '#/components/schemas/PaginaBase'
+        - type: object
+          properties:
+            conteudo:
+              type: array
+              items:
+                $ref: '#/components/schemas/MatriculaResposta'
+
+    ProvaRequest:
+      type: object
+      required: [periodoLetivoId, titulo, dataAplicacao, notaMaxima]
+      properties:
+        periodoLetivoId:
+          type: integer
+          format: int64
+        titulo:
+          type: string
+          maxLength: 150
+          example: Simulado de Matemática
+        descricao:
+          type: string
+          nullable: true
+        dataAplicacao:
+          type: string
+          format: date
+          example: "2026-11-20"
+        notaMaxima:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          multipleOf: 0.01
+          description: Maior que zero (P04). Duas casas decimais.
+          example: 10.00
+
+    ProvaResposta:
+      type: object
+      required: [id, periodoLetivoId, titulo, dataAplicacao, notaMaxima, criadaEm]
+      properties:
+        id:
+          type: integer
+          format: int64
+        periodoLetivoId:
+          type: integer
+          format: int64
+        titulo:
+          type: string
+        descricao:
+          type: string
+          nullable: true
+        dataAplicacao:
+          type: string
+          format: date
+        notaMaxima:
+          type: number
+          format: double
+        criadaPorId:
+          type: integer
+          format: int64
+          nullable: true
+        criadaEm:
+          type: string
+          format: date-time
+
+    ProvaPagina:
+      allOf:
+        - $ref: '#/components/schemas/PaginaBase'
+        - type: object
+          properties:
+            conteudo:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProvaResposta'
+
+    NotaRequest:
+      type: object
+      required: [matriculaId, nota]
+      properties:
+        matriculaId:
+          type: integer
+          format: int64
+          description: Matrícula do aluno (não o id do aluno).
+        nota:
+          type: number
+          format: double
+          minimum: 0
+          multipleOf: 0.01
+          example: 7.5
+
+    NotaCorrecaoRequest:
+      type: object
+      required: [nota]
+      properties:
+        nota:
+          type: number
+          format: double
+          minimum: 0
+          multipleOf: 0.01
+
+    NotaResposta:
+      type: object
+      required: [id, provaId, matriculaId, nomeAluno, matriculaEscolar, nota, lancadaPorId, lancadaEm]
+      properties:
+        id:
+          type: integer
+          format: int64
+        provaId:
+          type: integer
+          format: int64
+        matriculaId:
+          type: integer
+          format: int64
+        nomeAluno:
+          type: string
+        matriculaEscolar:
+          type: string
+        nota:
+          type: number
+          format: double
+        lancadaPorId:
+          type: integer
+          format: int64
+        lancadaEm:
+          type: string
+          format: date-time
+        alteradaPorId:
+          type: integer
+          format: int64
+          nullable: true
+          description: Preenchido após a primeira correção.
+        alteradaEm:
+          type: string
+          format: date-time
+          nullable: true
+
+    NotaPagina:
+      allOf:
+        - $ref: '#/components/schemas/PaginaBase'
+        - type: object
+          properties:
+            conteudo:
+              type: array
+              items:
+                $ref: '#/components/schemas/NotaResposta'
+
+    ProcessoSeletivoRequest:
+      type: object
+      required: [periodoLetivoId, provaId]
+      properties:
+        periodoLetivoId:
+          type: integer
+          format: int64
+        provaId:
+          type: integer
+          format: int64
+
+    ProcessoSeletivoResposta:
+      type: object
+      required: [id, periodoLetivoId, provaId, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        periodoLetivoId:
+          type: integer
+          format: int64
+        provaId:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [CRIADO]
+          description: Único estado formal (Q12).
+        criadoPorId:
+          type: integer
+          format: int64
+          nullable: true
+
+    ProcessoSeletivoPagina:
+      allOf:
+        - $ref: '#/components/schemas/PaginaBase'
+        - type: object
+          properties:
+            conteudo:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProcessoSeletivoResposta'
+
+    ClassificacaoResposta:
+      type: object
+      required: [processoSeletivoId, vagasPorAno, itens]
+      properties:
+        processoSeletivoId:
+          type: integer
+          format: int64
+        calculadaEm:
+          type: string
+          format: date-time
+          nullable: true
+          description: Nulo se a classificação ainda não foi gerada.
+        vagasPorAno:
+          type: integer
+          example: 10
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClassificacaoItem'
+
+    ClassificacaoItem:
+      type: object
+      required: [matriculaId, anoEscolar, posicao, notaFinal, selecionado, nomeAluno]
+      properties:
+        matriculaId:
+          type: integer
+          format: int64
+        anoEscolar:
+          type: integer
+          minimum: 1
+          maximum: 3
+        posicao:
+          type: integer
+          minimum: 1
+          description: Sequencial dentro do ano escolar, sem ex-aequo.
+        notaFinal:
+          type: number
+          format: double
+        selecionado:
+          type: boolean
+        nomeAluno:
+          type: string
+        matriculaEscolar:
+          type: string
+          description: Somente ADMIN e SECRETARIA. Ausente para CONSULTA.
+          nullable: true
+
+    ConcessaoBolsaRequest:
+      type: object
+      description: Corpo opcional. Sem corpo ou com `matriculaId` ausente, a concessão é em lote.
+      properties:
+        matriculaId:
+          type: integer
+          format: int64
+          nullable: true
+          description: Se informado, concede só a esta matrícula.
+        valorMensal:
+          type: number
+          format: double
+          nullable: true
+          description: Se informado, deve ser 300.00 (configuração). Diferente disso, VALOR_BOLSA_INVALIDO.
+
+    BolsaResposta:
+      type: object
+      required: [id, processoSeletivoId, matriculaId, anoEscolar, posicao, nomeAluno, valorMensal, situacao, dataInicio]
+      properties:
+        id:
+          type: integer
+          format: int64
+        processoSeletivoId:
+          type: integer
+          format: int64
+        matriculaId:
+          type: integer
+          format: int64
+        anoEscolar:
+          type: integer
+        posicao:
+          type: integer
+        nomeAluno:
+          type: string
+        matriculaEscolar:
+          type: string
+          nullable: true
+          description: Somente ADMIN e SECRETARIA. Ausente para CONSULTA.
+        valorMensal:
+          type: number
+          format: double
+          example: 300.00
+        situacao:
+          type: string
+          enum: [ATIVA, CANCELADA]
+          description: No MVP só ATIVA é gravada. CANCELADA é reservado para P1.
+        dataInicio:
+          type: string
+          format: date
+          description: Data da concessão (Q17).
+        dataFim:
+          type: string
+          format: date
+          nullable: true
+          description: Em branco no MVP (Q17).
+        criadaPorId:
+          type: integer
+          format: int64
+          nullable: true
+          description: Somente ADMIN e SECRETARIA. Ausente para CONSULTA.
+        criadaEm:
+          type: string
+          format: date-time
+          nullable: true
+          description: Somente ADMIN e SECRETARIA. Ausente para CONSULTA.
+
+    PaginaBase:
+      type: object
+      required: [conteudo, pagina, tamanho, totalElementos, totalPaginas]
+      properties:
+        conteudo:
+          type: array
+          items: {}
+        pagina:
+          type: integer
+          minimum: 0
+        tamanho:
+          type: integer
+          minimum: 1
+          maximum: 100
+        totalElementos:
+          type: integer
+          minimum: 0
+        totalPaginas:
+          type: integer
+          minimum: 0

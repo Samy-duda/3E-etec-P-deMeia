@@ -1,0 +1,14 @@
+<header class="cabecalho">
+  <div class="marca">Pé-de-Meia</div>
+  <nav class="menu" aria-label="Principal">
+    @for (item of itensVisiveis(); track item.rota) {
+      <a [routerLink]="item.rota" routerLinkActive="ativo">{{ item.rotulo }}</a>
+    }
+  </nav>
+  @if (usuario(); as u) {
+    <div class="sessao">
+      <span>{{ u.nome }} ({{ u.perfil }})</span>
+      <button type="button" class="botao secundario" (click)="sair()">Sair</button>
+    </div>
+  }
+</header>

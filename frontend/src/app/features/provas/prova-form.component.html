@@ -1,0 +1,67 @@
+<h1>Nova prova</h1>
+
+<div class="cartao">
+  <app-mensagem-erro [erro]="erroPeriodos()" />
+  @if (carregandoPeriodos()) {
+    <p class="carregando" role="status">Carregando períodos...</p>
+  }
+
+  <app-mensagem-erro [erro]="erro()" />
+
+  <form [formGroup]="form" (ngSubmit)="salvar()" novalidate>
+    <div class="grade-campos">
+      <div class="campo">
+        <label for="prova-periodo">Período letivo *</label>
+        <select id="prova-periodo" formControlName="periodoLetivoId">
+          <option value="">Escolha o período</option>
+          @for (periodo of periodosDisponiveis(); track periodo.id) {
+            <option [value]="periodo.id">{{ periodo.nome }}</option>
+          }
+        </select>
+        @if (form.controls.periodoLetivoId.touched && form.controls.periodoLetivoId.hasError('required')) {
+          <span class="erro-campo">Escolha o período.</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="prova-titulo">Título *</label>
+        <input id="prova-titulo" type="text" formControlName="titulo" maxlength="150" />
+        @if (form.controls.titulo.touched && form.controls.titulo.hasError('required')) {
+          <span class="erro-campo">Informe o título.</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="prova-data">Data de aplicação *</label>
+        <input id="prova-data" type="date" formControlName="dataAplicacao" />
+        @if (form.controls.dataAplicacao.touched && form.controls.dataAplicacao.hasError('required')) {
+          <span class="erro-campo">Informe a data de aplicação.</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="prova-nota-maxima">Nota máxima *</label>
+        <input id="prova-nota-maxima" type="number" step="0.01" min="0.01" formControlName="notaMaxima" />
+        <span class="dica">Maior que zero, com até duas casas decimais.</span>
+        @if (form.controls.notaMaxima.touched && form.controls.notaMaxima.hasError('required')) {
+          <span class="erro-campo">Informe a nota máxima.</span>
+        }
+        @if (form.controls.notaMaxima.touched && form.controls.notaMaxima.hasError('duasCasasDecimais')) {
+          <span class="erro-campo">Use no máximo duas casas decimais.</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="prova-descricao">Descrição (opcional)</label>
+        <input id="prova-descricao" type="text" formControlName="descricao" />
+      </div>
+    </div>
+
+    <div class="acoes">
+      <button type="submit" class="botao" [disabled]="enviando()">
+        {{ enviando() ? 'Salvando...' : 'Cadastrar prova' }}
+      </button>
+      <a class="botao secundario" routerLink="/provas">Voltar para provas</a>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,33 @@
+<div class="caixa cartao">
+  <h1>Entrar no Pé-de-Meia</h1>
+
+  @if (aviso(); as texto) {
+    <div class="alerta alerta-info" role="status"><p>{{ texto }}</p></div>
+  }
+
+  <app-mensagem-erro [erro]="erro()" />
+
+  <form [formGroup]="form" (ngSubmit)="entrar()" novalidate>
+    <div class="campo">
+      <label for="email">E-mail</label>
+      <input id="email" type="text" formControlName="email" autocomplete="username" />
+      @if (form.controls.email.touched && form.controls.email.hasError('required')) {
+        <span class="erro-campo">Informe o e-mail.</span>
+      }
+    </div>
+
+    <div class="campo">
+      <label for="senha">Senha</label>
+      <input id="senha" type="password" formControlName="senha" autocomplete="current-password" />
+      @if (form.controls.senha.touched && form.controls.senha.hasError('required')) {
+        <span class="erro-campo">Informe a senha.</span>
+      }
+    </div>
+
+    <div class="acoes">
+      <button type="submit" class="botao" [disabled]="enviando()">
+        {{ enviando() ? 'Entrando...' : 'Entrar' }}
+      </button>
+    </div>
+  </form>
+</div>

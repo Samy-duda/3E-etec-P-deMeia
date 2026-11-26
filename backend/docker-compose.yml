@@ -1,0 +1,25 @@
+# MySQL 8.0 para desenvolvimento (ADR-007, 05-estrutura-pastas.md, seção 4).
+# Credenciais vêm de backend/.env (fora do git). Copie .env.example para .env e troque as senhas.
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: pedemeia-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: pedemeia
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?defina MYSQL_ROOT_PASSWORD em backend/.env}
+      MYSQL_USER: ${MYSQL_USER:-pedemeia}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?defina MYSQL_PASSWORD em backend/.env}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    ports:
+      - "3306:3306"
+    volumes:
+      - pedemeia-mysql-dados:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pedemeia-mysql-dados:

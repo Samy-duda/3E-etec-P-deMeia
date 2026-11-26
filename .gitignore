@@ -1,0 +1,18 @@
+# Segredos: chaves JWT privadas nunca vão para o repositório
+**/chave-privada.pem
+**/*.env
+!**/.env.example
+
+# Artefatos de build e dependências
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+.claude/settings.local.json
+
+# IDEs e sistema
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

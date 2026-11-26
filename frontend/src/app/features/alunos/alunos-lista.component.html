@@ -1,0 +1,56 @@
+<h1>Alunos</h1>
+
+<div class="acoes">
+  <a class="botao" routerLink="/alunos/novo">Novo aluno</a>
+</div>
+
+<section class="cartao" aria-labelledby="titulo-busca">
+  <h2 id="titulo-busca">Buscar</h2>
+  <form [formGroup]="filtroForm" (ngSubmit)="pesquisar()" class="grade-campos">
+    <div class="campo">
+      <label for="busca-matricula">Matrícula escolar</label>
+      <input id="busca-matricula" type="text" formControlName="matriculaEscolar" maxlength="30" />
+    </div>
+    <div class="campo">
+      <label for="busca-nome">Nome</label>
+      <input id="busca-nome" type="text" formControlName="nome" maxlength="120" />
+    </div>
+    <div class="acoes">
+      <button type="submit" class="botao" [disabled]="carregando()">Pesquisar</button>
+    </div>
+  </form>
+</section>
+
+<app-mensagem-erro [erro]="erro()" />
+
+@if (carregando()) {
+  <p class="carregando" role="status">Carregando alunos...</p>
+}
+
+@if (resultado(); as pagina) {
+  <section class="cartao">
+    @if (pagina.totalElementos === 0 && !carregando()) {
+      <p class="vazio">Nenhum aluno encontrado.</p>
+    } @else {
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Matrícula escolar</th>
+            <th>Nascimento</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (aluno of pagina.conteudo; track aluno.id) {
+            <tr>
+              <td data-rotulo="Nome">{{ aluno.nome }}</td>
+              <td data-rotulo="Matrícula escolar">{{ aluno.matriculaEscolar }}</td>
+              <td data-rotulo="Nascimento">{{ formatarData(aluno.dataNascimento) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-paginacao [pagina]="pagina.pagina" [totalPaginas]="pagina.totalPaginas" (mudarPagina)="mudarPagina($event)" />
+    }
+  </section>
+}

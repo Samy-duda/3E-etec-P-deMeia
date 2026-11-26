@@ -1,0 +1,116 @@
+<h1>Matrículas do período</h1>
+
+<div class="acoes">
+  <a class="botao secundario" routerLink="/periodos-letivos">Voltar para períodos</a>
+</div>
+
+<section class="cartao">
+  <h2>Matricular aluno</h2>
+
+  <form [formGroup]="buscaForm" (ngSubmit)="buscarAluno()" class="grade-campos">
+    <div class="campo">
+      <label for="criterio">Buscar por</label>
+      <select id="criterio" formControlName="criterio">
+        <option value="matricula">Matrícula escolar</option>
+        <option value="nome">Nome</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label for="texto-busca">Termo</label>
+      <input id="texto-busca" type="text" formControlName="texto" maxlength="120" />
+    </div>
+    <div class="acoes">
+      <button type="submit" class="botao" [disabled]="buscandoAluno()">Buscar aluno</button>
+    </div>
+  </form>
+
+  <app-mensagem-erro [erro]="erroBusca()" />
+  @if (buscandoAluno()) {
+    <p class="carregando" role="status">Buscando alunos...</p>
+  }
+  @if (resultadosBusca().length > 0) {
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Matrícula escolar</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (aluno of resultadosBusca(); track aluno.id) {
+          <tr>
+            <td data-rotulo="Nome">{{ aluno.nome }}</td>
+            <td data-rotulo="Matrícula escolar">{{ aluno.matriculaEscolar }}</td>
+            <td data-rotulo="Escolher">
+              <button type="button" class="botao secundario" (click)="escolherAluno(aluno)">Escolher</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  @if (alunoEscolhido(); as aluno) {
+    <p><strong>Aluno escolhido:</strong> {{ aluno.nome }} ({{ aluno.matriculaEscolar }})</p>
+    <form [formGroup]="matriculaForm" (ngSubmit)="matricular()" class="grade-campos" novalidate>
+      <div class="campo">
+        <label for="ano-escolar">Ano escolar</label>
+        <select id="ano-escolar" formControlName="anoEscolar">
+          @for (ano of anosEscolares; track ano) {
+            <option [ngValue]="ano">{{ ano }}º ano</option>
+          }
+        </select>
+      </div>
+      <div class="campo">
+        <label for="turma">Turma (opcional)</label>
+        <input id="turma" type="text" formControlName="turma" maxlength="20" />
+      </div>
+      <div class="acoes">
+        <button type="submit" class="botao" [disabled]="enviandoMatricula()">
+          {{ enviandoMatricula() ? 'Matriculando...' : 'Matricular' }}
+        </button>
+      </div>
+    </form>
+  }
+
+  @if (sucessoMatricula(); as texto) {
+    <div class="alerta alerta-sucesso" role="status"><p>{{ texto }}</p></div>
+  }
+  <app-mensagem-erro [erro]="erroMatricula()" />
+</section>
+
+<section class="cartao">
+  <h2>Matrículas</h2>
+  <app-mensagem-erro [erro]="erro()" />
+  @if (carregando()) {
+    <p class="carregando" role="status">Carregando matrículas...</p>
+  }
+  @if (resultado(); as pagina) {
+    @if (pagina.totalElementos === 0 && !carregando()) {
+      <p class="vazio">Nenhum aluno matriculado neste período.</p>
+    } @else {
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Aluno</th>
+            <th>Matrícula escolar</th>
+            <th>Ano escolar</th>
+            <th>Turma</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (matricula of pagina.conteudo; track matricula.id) {
+            <tr>
+              <td data-rotulo="Aluno">{{ matricula.nomeAluno }}</td>
+              <td data-rotulo="Matrícula escolar">{{ matricula.matriculaEscolar }}</td>
+              <td data-rotulo="Ano escolar">{{ matricula.anoEscolar }}º</td>
+              <td data-rotulo="Turma">{{ matricula.turma ?? '' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <app-paginacao [pagina]="pagina.pagina" [totalPaginas]="pagina.totalPaginas" (mudarPagina)="mudarPagina($event)" />
+    }
+  }
+</section>
